@@ -1,13 +1,49 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Target, Clock, Trophy, TrendingUp, Calendar, Shield, FileText } from 'lucide-react-native';
+import { shareAsync } from 'expo-sharing';
+import { generateLearningPost } from '@/utils/shareTemplate';
+import SessionTimer from '../../components/SessionTimer';
+
 
 export default function Dashboard() {
   const currentStreak = 7;
   const totalHours = 42;
   const completedTopics = 12;
   const nextSession = "OWASP Top 10 - Injection Attacks";
+
+  // Daily learning state
+  const DAILY_TARGET = 20; // minutes
+  const [todayMinutes, setTodayMinutes] = useState(0);
+
+  const handleSessionComplete = (duration: number) => {
+    setTodayMinutes(prev => prev + duration);
+    Alert.alert('Session Complete', `You studied for ${duration} minutes!`);
+  };
+
+  const handleShare = async () => {
+    try {
+      const post = generateLearningPost({
+        userName: 'Your Name',
+        topics: [
+          'Cybersecurity Fundamentals',
+          'OWASP Top 10',
+          'Practical Labs',
+        ],
+        period: 'this week',
+        achievements: [
+          `Maintained a ${currentStreak}-day learning streak`,
+          `Completed ${completedTopics} topics`,
+          `Studied for ${totalHours} hours`,
+        ],
+      });
+      await shareAsync(post, { dialogTitle: 'Share your learning journey' });
+    } catch (error) {
+      Alert.alert('Error', 'Could not share your post.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -38,17 +74,24 @@ export default function Dashboard() {
           </View>
         </View>
 
-        {/* Today's Goal */}
+        {/* Daily Learning Tracker */}
         <View style={styles.goalCard}>
           <View style={styles.goalHeader}>
             <Target size={20} color="#10b981" />
             <Text style={styles.goalTitle}>Today's Goal</Text>
           </View>
-          <Text style={styles.goalDescription}>Complete 2 hours of focused learning</Text>
+          <Text style={styles.goalDescription}>Learn at least 20 minutes today</Text>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '65%' }]} />
+            <View style={[styles.progressFill, { width: `${Math.min((todayMinutes / DAILY_TARGET) * 100, 100)}%` }]} />
           </View>
-          <Text style={styles.progressText}>1.3 / 2.0 hours completed</Text>
+          <Text style={styles.progressText}>{todayMinutes} / {DAILY_TARGET} minutes completed</Text>
+          <SessionTimer onSessionComplete={handleSessionComplete} targetDuration={DAILY_TARGET} />
+          {todayMinutes < DAILY_TARGET && (
+            <Text style={styles.warningText}>Keep going! Every little step matters.</Text>
+          )}
+          {todayMinutes >= DAILY_TARGET && (
+            <Text style={styles.celebrateText}>🎉 Daily goal achieved! Great job!</Text>
+          )}
         </View>
 
         {/* Next Session */}
@@ -79,6 +122,9 @@ export default function Dashboard() {
             <TouchableOpacity style={styles.actionCard}>
               <TrendingUp size={24} color="#06b6d4" />
               <Text style={styles.actionText}>View Progress</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.actionCard, { backgroundColor: '#2563eb' }]} onPress={handleShare}>
+              <Text style={[styles.actionText, { color: '#fff' }]}>Share on LinkedIn</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -198,6 +244,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#94a3b8',
+    marginBottom: 8,
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#f59e0b',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  celebrateText: {
+    fontSize: 14,
+    color: '#10b981',
+    marginTop: 8,
+    textAlign: 'center',
+    fontFamily: 'Inter-SemiBold',
   },
   sessionCard: {
     backgroundColor: '#1e293b',

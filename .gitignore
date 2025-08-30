@@ -1,3 +1,4 @@
 # Ignore Expo local state
 .expo/
 node_modules
+.env
